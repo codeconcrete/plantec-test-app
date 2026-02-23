@@ -17,8 +17,8 @@ def build():
     cmd = [
         "pyinstaller",
         "--noconfirm",
-        "--onedir",          # 폴더 형태로 빌드 (onefile은 압축푸는 시간이 오래걸려 초기 로딩이 느림)
-        "--windowed",        # 검은 터미널 창 숨김 (Tkinter 서버창만 뜸)
+        "--onefile",         # 단일 exe 파일로 빌드 (배포 편의 극대화)
+        "--windowed",        # 검은 터미널 창 숨김
         "--name", "SmartSafetyDemo_v2",
         "--icon", "NONE",   # 기본 아이콘 사용
         "--hidden-import=pandas",

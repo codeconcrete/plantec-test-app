@@ -55,10 +55,9 @@ def run_streamlit(port):
     app_path = "safety_app.py"
     if hasattr(sys, '_MEIPASS'):
         app_path = os.path.join(sys._MEIPASS, "safety_app.py")
-        
-    cmd = [
-        sys.executable, "RUN_STREAMLIT", str(port), app_path
-    ]
+        cmd = [sys.executable, "RUN_STREAMLIT", str(port), app_path]
+    else:
+        cmd = [sys.executable, os.path.abspath(__file__), "RUN_STREAMLIT", str(port), app_path]
     
     # 터미널 창 숨김 처리 (백그라운드 실행)
     startupinfo = None
@@ -104,7 +103,7 @@ def open_app_window(port):
         ]
         for ep in edge_paths:
             if os.path.exists(ep):
-                proc = subprocess.Popen([ep, f'--app={url}', f'--user-data-dir={temp_dir}', '--start-maximized', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
+                proc = subprocess.Popen([ep, f'--app={url}', f'--user-data-dir={temp_dir}', '--window-size=1280,900', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
                 return proc
     except Exception:
         pass
@@ -117,7 +116,7 @@ def open_app_window(port):
         ]
         for cp in chrome_paths:
             if os.path.exists(cp):
-                proc = subprocess.Popen([cp, f'--app={url}', f'--user-data-dir={temp_dir}', '--start-maximized', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
+                proc = subprocess.Popen([cp, f'--app={url}', f'--user-data-dir={temp_dir}', '--window-size=1280,900', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
                 return proc
     except Exception:
         pass

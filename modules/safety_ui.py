@@ -54,7 +54,7 @@ def apply_custom_css():
         display: block;
     }
     
-    /* PRINT SETTINGS - CONTAINER METHOD */
+    /* PRINT SETTINGS - ROBUST VISIBILITY METHOD (JS ENHANCED) */
     @media print {
         @page {
             size: A4 landscape;
@@ -62,47 +62,73 @@ def apply_custom_css():
         }
         
         html, body {
-            width: max-content !important;
-            height: max-content !important;
-            min-width: 100% !important;
+            width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             background-color: white !important;
+            overflow: visible !important;
+        }
+
+        /* 1. Hide all Streamlit element containers (this removes all the blank UI pages!) */
+        .element-container {
+            display: none !important;
         }
         
-        /* 1. Hide EVERYTHING by default */
-        body * {
-            visibility: hidden;
-        }
-        
-        /* 2. Show only the printable area and its children constructed in Python */
-        #printable-area, #printable-area * {
-            visibility: visible;
-        }
-        
-        /* 3. Position the printable area at top-left to overlay hidden content */
-        #printable-area {
+        /* 2. ONLY show the container marked by our JS injection (contains the report) */
+        .element-container.report-element-container {
+            display: block !important;
             position: absolute !important;
-            left: 0 !important;
             top: 0 !important;
-            width: max-content !important;
-            min-width: 100% !important;
+            left: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            min-height: 210mm !important;
+        }
+
+        /* 3. Hide other specific UI scaffolding explicitly */
+        header, footer, [data-testid="stHeader"], [data-testid="stSidebar"], .stButton, .no-print, [data-testid="stToolbar"], button[title="View fullscreen"], [data-testid="stStatusWidget"] {
+            display: none !important;
+        }
+        
+        /* 4. Disable flex stretch to allow pages to flow naturally */
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"], .block-container, div[data-testid="stVerticalBlock"] {
+            position: static !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            z-index: 99999 !important;
+            transform: none !important;
+            display: block !important;
+            overflow: visible !important;
         }
         
-        /* 4. Restore natural flow for pages within the area */
+        /* 5. The printable area flows naturally */
+        #printable-area {
+            position: relative !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+        
+        #printable-area * {
+            visibility: visible !important;
+        }
+
+        /* 6. A4 Page Strict Formatting */
         .a4-page {
             position: relative !important;
-            width: max-content !important;
-            min-width: 297mm !important;
-            height: max-content !important;
-            min-height: 200mm !important;
+            width: 297mm !important;
+            height: 210mm !important; /* STRICT HEIGHT */
             page-break-after: always !important;
             page-break-inside: avoid !important;
+            break-after: page !important;
             margin: 0 !important;
-            padding: 10mm 15mm 15mm 15mm !important; /* 상 10mm, 우하좌 15mm 적용 (화면과 동일) */
+            padding: 10mm 15mm 15mm 15mm !important; /* 상 10mm, 우하좌 15mm 적용 */
             box-sizing: border-box !important;
             background-color: white !important;
             box-shadow: none !important;
@@ -110,26 +136,7 @@ def apply_custom_css():
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             display: block !important;
-        }
-        
-        /* 5. Escape Streamlit's nested layout boundaries */
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stMainBlockContainer"], .block-container, div[data-testid="stVerticalBlock"], .element-container, .stMarkdown, [data-testid="stMarkdownContainer"] {
-            position: static !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            min-height: 0 !important;
-            overflow: visible !important;
-            transform: none !important;
-            display: block !important;
-        }
-        
-        /* Hide UI elements rigorously */
-        header, footer, [data-testid="stHeader"], [data-testid="stSidebar"], .stButton, .no-print, [data-testid="stToolbar"] {
-            display: none !important;
+            overflow: hidden !important; /* PREVENT OVERLAPPING BLEED! */
         }
     }
     
@@ -160,7 +167,30 @@ def disable_translation():
     """
     components.html(js, height=0, width=0)
 
-def create_header_html(task_name, location, protectors, safety_equip, tools, materials, writer, writer_date, action_taker, reviewer, reviewer_date, checker, approver, approver_date):
+def mark_printable_container():
+    """인쇄용 영역을 담고 있는 최상위 Streamlit element-container에 클래스를 부여하여 다른 빈 컨테이너들과 구분"""
+    import streamlit.components.v1 as components
+    js = """
+    <script>
+        var doc = window.parent.document;
+        function tagContainer() {
+            var printArea = doc.getElementById('printable-area');
+            if (printArea) {
+                var container = printArea.closest('.element-container');
+                if (container) {
+                    container.classList.add('report-element-container');
+                }
+            }
+        }
+        // Run immediately and queue up retries in case of DOM load delays
+        tagContainer();
+        setTimeout(tagContainer, 500);
+        setTimeout(tagContainer, 1500);
+    </script>
+    """
+    components.html(js, height=0, width=0)
+
+def create_header_html(task_name, location, site_name, protectors, safety_equip, tools, materials, writer, writer_date, action_taker, reviewer, reviewer_date, checker, approver, approver_date):
     return f'''
 <div style="text-align:right; font-size:10px; margin-bottom:5px; color:black;">(보존기간 : 3년)</div>
 <table class="safety-table" style="width: 100%; table-layout: fixed;">
@@ -173,8 +203,10 @@ def create_header_html(task_name, location, protectors, safety_equip, tools, mat
         <col style="width: 15%;">
     </colgroup>
     <tr>
+        <th>현 장 명</th>
+        <td class="left-align">{site_name}</td>
         <th>단위 작업명</th>
-        <td class="left-align" colspan="5" style="color: blue; font-weight: bold; font-size:14px;">{task_name}</td>
+        <td class="left-align" colspan="3" style="color: blue; font-weight: bold; font-size:14px;">{task_name}</td>
     </tr>
     <tr>
         <th>보 호 구</th>
@@ -218,19 +250,47 @@ def create_header_html(task_name, location, protectors, safety_equip, tools, mat
 import math
 
 def count_view_lines(text, chars_per_line):
-    """줄바꿈과 자동 줄바꿈(wrapping)을 모두 고려한 줄 수 계산"""
+
+    """줄바꿈과 자동 줄바꿈(wrapping)을 모두 고려한 줄 수 계산
+
+    한글/CJK 문자는 2칸 너비로 계산하여 실제 렌더링에 가깝게 추정"""
+
     if not text:
+
         return 1
-    # Fix: Split by actual newline character, not literal string '\n'
-    lines = str(text).split('\n')
+
+    # Fix: Split by actual newline character, not literal string '\\n'
+
+    lines = str(text).split('\\n')
+
     total = 0
+
     for line in lines:
-        length = len(line)
-        if length == 0:
+
+        if not line:
+
             total += 1
+
         else:
-            total += math.ceil(length / chars_per_line)
+
+            # 한글/CJK 문자는 2칸, ASCII는 1칸으로 계산
+
+            width = 0
+
+            for ch in line:
+
+                if ord(ch) > 0x7F:
+
+                    width += 2
+
+                else:
+
+                    width += 1
+
+            total += max(1, math.ceil(width / chars_per_line))
+
     return total
+
 
 def split_text_to_fit(text, max_lines, chars_per_line):
     """주어진 줄 수(max_lines)에 맞춰 텍스트를 앞부분(head)과 뒷부분(tail)으로 분리"""
