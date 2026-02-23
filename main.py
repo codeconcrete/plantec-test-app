@@ -153,12 +153,30 @@ if __name__ == '__main__':
         browser_proc, temp_profile_dir = open_app_window(current_port)
         
         # 윈도우 환경(특히 사내망/Edge 권한 문제)에서 browser_proc.wait()가 
-        # 프로세스 위임 현상으로 인해 1초 만에 즉시 종료되는 치명적인 버그 해결.
-        # 확실하게 유저가 다 쓸 때까지 대기하도록 윈도우 기본 팝업 알림창(MessageBox)으로 메인 스레드를 블로킹합니다.
-        import ctypes
-        msg = "💡 [필독] 프로그램 서버가 브라우저에 연결되었습니다!\n\n현재 열린 브라우저 창에서 작업을 진행해 주십시오.\n\n작업을 모두 다 마치셨다면, 브라우저를 닫은 후\n반드시 이 알림창의 [확인] 버튼을 눌러 프로그램을 완전히 종료해 주십시오.\n\n(※ 이 창의 확인을 미리 누르면 도중에 서버 접속이 끊어집니다)"
-        ctypes.windll.user32.MessageBoxW(0, msg, "[종료 관리자] 위험성 평가 프로그램", 0x40040)
-            
+        # 프로세스 위임 현상으로 인해 즉시 종료되는 버그 해결.
+        # 알림창 대신, WMI(wmic)를 이용해 해당 유니크 User Data Directory를 사용하는 
+        # 브라우저 자식 프로세스가 살아있는지 주기적으로 감시합니다.
+        if temp_profile_dir:
+            profile_name = os.path.basename(temp_profile_dir)
+            while True:
+                time.sleep(3)
+                try:
+                    # 현재 띄워진 msedge.exe나 chrome.exe 중 우리의 유니크 프로필 경로를 쓰는 프로세스가 있는지 검사
+                    output = subprocess.check_output(
+                        'wmic process where "name=\'msedge.exe\' or name=\'chrome.exe\'" get commandline',
+                        shell=True, stderr=subprocess.STDOUT
+                    ).decode("utf-8", "ignore")
+                    
+                    if profile_name not in output:
+                        # 브라우저 창이 모두 닫혔다고 판단
+                        break
+                except Exception:
+                    # wmic 권한이 없거나 에러가 났을 경우 (안전장치로 그냥 종료처리)
+                    break
+        elif browser_proc:
+            # 기본 웹브라우저 폴백 등의 이유로 프로필 격리를 못 쓴 경우 단순 대기
+            browser_proc.wait()
+
     # 브라우저가 직접 닫혔거나 확인 버튼을 클릭한 경우 서버 강제 종료
     if server_process:
         server_process.terminate()
