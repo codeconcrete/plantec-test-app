@@ -44,6 +44,7 @@ import socket
 import urllib.request
 import webbrowser
 import tempfile
+import shutil
 
 server_process = None
 current_port = None
@@ -96,9 +97,9 @@ def check_server_ready(port, timeout=60):
 
 def open_app_window(port):
     url = f"http://127.0.0.1:{port}"
-    # Edge/Chrome 독립 프로세스 생존 보장을 위한 독립된 User Data Directory 지정
-    temp_dir = os.path.join(tempfile.gettempdir(), "SmartSafetyAppProfile")
-    os.makedirs(temp_dir, exist_ok=True)
+    # Edge/Chrome 독립 프로세스 생존 보장을 위한 독립된 유니크 User Data Directory 생성
+    # 고정된 폴더를 쓰면 백그라운드에 남은 고아 Edge 프로세스가 새 요청을 인터셉트하여 바로 종료될 수 있음.
+    temp_dir = tempfile.mkdtemp(prefix="SmartSafetyAppProfile_")
     
     # 1순위: Windows 10/11 기본 내장 Edge 브라우저를 독립된 앱 창 모드(--app)로 띄우기
     try:
@@ -110,7 +111,7 @@ def open_app_window(port):
         for ep in edge_paths:
             if os.path.exists(ep):
                 proc = subprocess.Popen([ep, f'--app={url}', f'--user-data-dir={temp_dir}', '--window-size=1280,900', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
-                return proc
+                return proc, temp_dir
     except Exception:
         pass
         
@@ -123,13 +124,13 @@ def open_app_window(port):
         for cp in chrome_paths:
             if os.path.exists(cp):
                 proc = subprocess.Popen([cp, f'--app={url}', f'--user-data-dir={temp_dir}', '--window-size=1280,900', '--disable-features=Translate', '--disable-translate', '--lang=ko'])
-                return proc
+                return proc, temp_dir
     except Exception:
         pass
         
     # 3순위: 위 브라우저들이 없으면 사용자의 기본 웹 브라우저 탭으로 열기 (프로세스 추적 불가 폴백)
     webbrowser.open(url)
-    return None
+    return None, None
 
 if __name__ == '__main__':
     try:
@@ -146,9 +147,10 @@ if __name__ == '__main__':
     # 서버 준비 대기 (GUI 없이 백그라운드 블로킹)
     is_ready = check_server_ready(current_port, timeout=60)
     
+    temp_profile_dir = None
     if is_ready:
         # 창 열기 및 핸들 획득
-        browser_proc = open_app_window(current_port)
+        browser_proc, temp_profile_dir = open_app_window(current_port)
         
         if browser_proc:
             # 브라우저 창 닫힐 때까지 대기
@@ -159,4 +161,11 @@ if __name__ == '__main__':
         server_process.terminate()
         server_process.wait(timeout=5)
         
+    # 임시 프로필 폴더 삭제 (Edge/Chrome 고립 해제)
+    if temp_profile_dir and os.path.exists(temp_profile_dir):
+        try:
+            shutil.rmtree(temp_profile_dir, ignore_errors=True)
+        except:
+            pass
+            
     sys.exit(0)
