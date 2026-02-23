@@ -22,7 +22,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "RUN_STREAMLIT":
     app_path = sys.argv[3]
     
     # Streamlit CLI 파서에게 맞게 파라미터 변조
-    sys.argv = ["streamlit", "run", app_path, "--server.port", str(port), "--server.headless", "true", "--global.developmentMode", "false", "--server.address", "localhost", "--theme.base", "light"]
+    sys.argv = ["streamlit", "run", app_path, "--server.port", str(port), "--server.headless", "true", "--global.developmentMode", "false", "--server.address", "127.0.0.1", "--theme.base", "light"]
     
     from streamlit.web.cli import main
     try:
@@ -75,7 +75,7 @@ def run_streamlit(port):
     )
 
 def check_server_ready(port, timeout=60):
-    url = f"http://localhost:{port}"
+    url = f"http://127.0.0.1:{port}"
     start_time = time.time()
     
     while time.time() - start_time < timeout:
@@ -89,7 +89,7 @@ def check_server_ready(port, timeout=60):
     return False
 
 def open_app_window(port):
-    url = f"http://localhost:{port}"
+    url = f"http://127.0.0.1:{port}"
     # Edge/Chrome 독립 프로세스 생존 보장을 위한 독립된 User Data Directory 지정
     temp_dir = os.path.join(tempfile.gettempdir(), "SmartSafetyAppProfile")
     os.makedirs(temp_dir, exist_ok=True)
