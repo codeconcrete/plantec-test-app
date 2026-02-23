@@ -152,11 +152,14 @@ if __name__ == '__main__':
         # 창 열기 및 핸들 획득
         browser_proc, temp_profile_dir = open_app_window(current_port)
         
-        if browser_proc:
-            # 브라우저 창 닫힐 때까지 대기
-            browser_proc.wait()
+        # 윈도우 환경(특히 사내망/Edge 권한 문제)에서 browser_proc.wait()가 
+        # 프로세스 위임 현상으로 인해 1초 만에 즉시 종료되는 치명적인 버그 해결.
+        # 확실하게 유저가 다 쓸 때까지 대기하도록 윈도우 기본 팝업 알림창(MessageBox)으로 메인 스레드를 블로킹합니다.
+        import ctypes
+        msg = "💡 [필독] 프로그램 서버가 브라우저에 연결되었습니다!\n\n현재 열린 브라우저 창에서 작업을 진행해 주십시오.\n\n작업을 모두 다 마치셨다면, 브라우저를 닫은 후\n반드시 이 알림창의 [확인] 버튼을 눌러 프로그램을 완전히 종료해 주십시오.\n\n(※ 이 창의 확인을 미리 누르면 도중에 서버 접속이 끊어집니다)"
+        ctypes.windll.user32.MessageBoxW(0, msg, "[종료 관리자] 위험성 평가 프로그램", 0x40040)
             
-    # 브라우저가 직접 닫혔거나 서버 구동에 실패한 경우
+    # 브라우저가 직접 닫혔거나 확인 버튼을 클릭한 경우 서버 강제 종료
     if server_process:
         server_process.terminate()
         server_process.wait(timeout=5)
