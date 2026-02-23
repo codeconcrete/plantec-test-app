@@ -29,6 +29,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "RUN_STREAMLIT":
         sys.exit(main())
     except Exception as e:
         import traceback
+        err_msg = traceback.format_exc()
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, f"Streamlit Server Crash:\n\n{err_msg}", "SmartSafety Error", 0x10)
+        except:
+            pass
         traceback.print_exc()
     sys.exit(0)
 
