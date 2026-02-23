@@ -19,6 +19,19 @@ ui.disable_translation()
 # 시연용 체험판이므로 API 키를 코드 실행 시 강제로 주입합니다.
 api_key = "AIzaSyCXP3noWGj7GCDIlCPyiW6RDrN8GXuUY24"
 
+# --- [서버 수동 종료 버튼] ---
+# 백그라운드 서버가 브라우저 종료를 감지하지 못하는 환경(Edge 탭 위임 현상 등)을 대비해
+# 사용자가 명시적으로 PyInstaller 백그라운드 프로세스를 죽일 수 있는 버튼을 제공합니다.
+with st.sidebar:
+    st.markdown("### 🔌 프로그램 제어")
+    if st.button("🚪 프로그램 완전 종료 (서버 끄기)", type="primary", use_container_width=True):
+        st.warning("서버를 종료합니다. 잠시 후 창을 닫아주세요.")
+        import os
+        import time
+        time.sleep(1)
+        os._exit(0)
+    st.caption("위험성 평가 작업을 모두 마치셨다면 위 버튼을 눌러 백그라운드 서버를 안전하게 종료해 주세요.")
+
 safety_index, ref_vocab, synonym_map = data_handler.load_safety_index()
 
 # 참고 용어 텍스트 구성

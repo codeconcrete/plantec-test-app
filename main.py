@@ -149,38 +149,22 @@ if __name__ == '__main__':
     
     temp_profile_dir = None
     if is_ready:
-        # 창 열기 및 핸들 획득
+        # 창 열기 
         browser_proc, temp_profile_dir = open_app_window(current_port)
         
-        # 윈도우 환경(특히 사내망/Edge 권한 문제)에서 browser_proc.wait()가 
-        # 프로세스 위임 현상으로 인해 즉시 종료되는 버그 해결.
-        # 알림창 대신, WMI(wmic)를 이용해 해당 유니크 User Data Directory를 사용하는 
-        # 브라우저 자식 프로세스가 살아있는지 주기적으로 감시합니다.
-        if temp_profile_dir:
-            profile_name = os.path.basename(temp_profile_dir)
-            while True:
-                time.sleep(3)
-                try:
-                    # 현재 띄워진 msedge.exe나 chrome.exe 중 우리의 유니크 프로필 경로를 쓰는 프로세스가 있는지 검사
-                    output = subprocess.check_output(
-                        'wmic process where "name=\'msedge.exe\' or name=\'chrome.exe\'" get commandline',
-                        shell=True, stderr=subprocess.STDOUT
-                    ).decode("utf-8", "ignore")
-                    
-                    if profile_name not in output:
-                        # 브라우저 창이 모두 닫혔다고 판단
-                        break
-                except Exception:
-                    # wmic 권한이 없거나 에러가 났을 경우 (안전장치로 그냥 종료처리)
-                    break
-        elif browser_proc:
-            # 기본 웹브라우저 폴백 등의 이유로 프로필 격리를 못 쓴 경우 단순 대기
-            browser_proc.wait()
+        # 브라우저 위임(Brokering)으로 인해 프로세스 추적이 불가능하므로,
+        # 서버 프로세스 자체가 끝날 때까지 무한 대기합니다.
+        # 사용자는 Streamlit 웹 화면 내의 [프로그램 종료] 버튼을 눌러서 서버를 끕니다.
+        if server_process:
+            server_process.wait()
 
-    # 브라우저가 직접 닫혔거나 확인 버튼을 클릭한 경우 서버 강제 종료
+    # 서버 강제 종료
     if server_process:
-        server_process.terminate()
-        server_process.wait(timeout=5)
+        try:
+            server_process.terminate()
+            server_process.wait(timeout=5)
+        except:
+            pass
         
     # 임시 프로필 폴더 삭제 (Edge/Chrome 고립 해제)
     if temp_profile_dir and os.path.exists(temp_profile_dir):
